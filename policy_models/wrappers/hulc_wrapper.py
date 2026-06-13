@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class HulcWrapper(gym.Wrapper):
     def __init__(self, dataset_loader, device, show_gui=False, **kwargs):
-        self.set_egl_device(device)
+        # self.set_egl_device(device)
         env = get_env(
             dataset_loader.abs_datasets_dir, show_gui=show_gui, obs_space=dataset_loader.observation_space, **kwargs
         )

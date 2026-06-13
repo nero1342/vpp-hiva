@@ -631,7 +631,6 @@ class VPP_Policy(pl.LightningModule):
             pred_action_seq = self.eval_forward(obs, goal)
 
             self.pred_action_seq = pred_action_seq
-
         current_action = self.pred_action_seq[0, self.rollout_step_counter]
         if len(current_action.shape) == 2:
             current_action = einops.rearrange(current_action, 'b d -> b 1 d')

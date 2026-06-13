@@ -298,6 +298,42 @@ class RolloutVideo:
             clip.write_videofile(filename, codec='libx264', bitrate="5000k")  # You can adjust the bitrate as needed
         else:
             clip.write_gif(filename, logger=None)
+    def _log_currentvideos_to_file2(self, current_step, result, save_as_video=False):
+        """
+        Mostly taken from WandB
+        """
+        video = self.videos[-1]
+        tag = self.tags[-1]
+
+        if len(video.shape) == 4:
+            video = video.unsqueeze(0)
+        video = np.clip(video.numpy() * 255, 0, 255).astype(np.uint8)
+
+        mpy = wandb.util.get_module(
+            "moviepy.editor",
+            required='wandb.Video requires moviepy and imageio when passing raw data.  Install with "pip install moviepy imageio"',
+        )
+        tensor = self._prepare_video(video)
+        # Resize tensor if resolution scale is not 1.0
+        if self.resolution_scale != 1.0:
+            tensor = self._resize_video(tensor)
+        _, _height, _width, _channels = tensor.shape
+
+        if save_as_video:
+            # encode sequence of images into gif string
+            clip = mpy.ImageSequenceClip(list(tensor), fps=30)
+        else:
+            clip = mpy.ImageSequenceClip(list(tensor), fps=20)
+
+        tag = tag.replace("/", "_")
+        if save_as_video:
+            filename = str(self.save_dir / f"{tag}_{current_step}_success{result}.mp4")
+        else:
+            filename = self.save_dir / f"{tag}_{current_step}_success{result}.gif"
+        if save_as_video:
+            clip.write_videofile(filename, codec='libx264', bitrate="5000k")  # You can adjust the bitrate as needed
+        else:
+            clip.write_gif(filename, logger=None)
     
     def save_frames_to_subfolder(self, n, rollout_index):
         # Ensure n is a valid number

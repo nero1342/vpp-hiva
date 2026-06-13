@@ -12,7 +12,7 @@ max_window_size: 50
 future_range: 29
 seed: 242
 device: 'cuda'
-batch_size: 28
+batch_size: 64
 devices: 4
 goal_window_size: 1
 multistep: 10 #${act_seq_len}
@@ -24,8 +24,8 @@ window_sampling_strategy: 'geometric'
 num_workers: 12
 img_gen_frame_diff: 3
 benchmark_name: calvin_abcd # calvin_abcd
-use_ckpt_path : false
-ckpt_path: /cephfs/cjyao/code/video_robot_svd-main/logs/svd_10token_mdt_layer2/runs/2024-09-27/00-52-03/cvpr2025/checkpoints/last.pt
+use_ckpt_path : true
+ckpt_path: /mnt/localssd/calvin/weights/dp-calvin/last.pt
 act_seq_len: 10
 obs_seq_len: 1
 

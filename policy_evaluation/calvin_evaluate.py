@@ -250,7 +250,7 @@ def main(cfg):
             device_id=cfg.device,
             cfg=cfg,
         )
-        ckpt_path = os.path.join(cfg.train_folder,'saved_models')
+        ckpt_path = os.path.join(cfg.train_folder)
 
         for file in os.listdir(ckpt_path):
             ckpt = os.path.join(ckpt_path, file)

@@ -4,7 +4,7 @@ defaults:
   - datamodule: calvin
 
 model:
-  _target_: policy_models.VPP_policy.VPP_Policy
+  _target_: policy_models.VPP_policy_hiva.VPP_HiVA_Policy
   _recursive_: false
   latent_dim: 384
   multistep: 10
@@ -16,7 +16,7 @@ model:
   noise_scheduler: 'exponential'
   sigma_sample_density_type: 'loglogistic'
   use_lr_scheduler: true
-  act_window_size: 10
+  act_window_size: 10            # = denoiser token count (coefficient tokens)
   obs_seq_len: 1
   action_dim: 7
   action_seq_len: 10
@@ -34,6 +34,17 @@ model:
   use_all_layer: True
   extract_layer_idx: 1
   use_position_encoding: False
+  # --- HiVA coefficient representation (MUST match training config) ---
+  hiva_k: 8
+  hiva_fit_horizon: 15           # F: must match training; decode produces 15 steps, multistep=10 executes the first 10
+  hiva_degree: 3
+  hiva_rot_mode: flat
+  hiva_rot_eta: 1.0
+  hiva_ridge: 0.0
+  hiva_grip_min: -1.0
+  hiva_grip_max: 1.0
+  hiva_coeff_stats_mode: running   # decode reads run_mean/run_var restored from the checkpoint
+  hiva_running_momentum: 0.01
   optimizer:
     _target_: torch.optim.AdamW
     transformer_weight_decay: 0.05
@@ -58,7 +69,7 @@ eval_cfg_overwrite:
     voltron_cache: /home/disk2/gyj/code/mdt_policy/pretrained_model_weights
 
 ep_len: 360
-num_sequences: 100
+num_sequences: 1000
 num_videos: 10
 lang_embeddings: null
 render: False
@@ -71,7 +82,7 @@ train_folder: /home/disk2/gyj/hyccode/Video-Prediction-Policy/checkpoint/alllaye
 model_name: mdt_test
 device: 1
 sampler_type: ddim
-multistep: 10
+multistep: 15
 num_sampling_steps: 10
 cond_lambda: 1
 cfg_value: 1
@@ -80,7 +91,7 @@ sigma_max: 80
 noise_scheduler: exponential
 
 lang_folder: lang_annotations
-act_seq_len: 10
+act_seq_len: 15
 obs_seq_len: 1
 future_range: 29
 
@@ -100,6 +111,3 @@ num_workers: 12
 img_gen_frame_diff: 3
 benchmark_name: calvin_abcd # calvin_abcd
 root_data_dir: /cephfs/shared/hyc/data/calvin/task_ABC_D
-# sigma_min: null
-# sigma_max: null
-# noise_scheduler: null

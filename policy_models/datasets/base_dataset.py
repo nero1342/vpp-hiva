@@ -118,7 +118,10 @@ class BaseDataset(Dataset):
                 raise ValueError
         else:
             idx, window_size = idx
-        sequence = self._get_sequences(idx, window_size)
+        try:
+            sequence = self._get_sequences(idx, window_size)
+        except:
+            return self.__getitem__(np.random.randint(0, self.__len__()))   
         if self.pad:
             pad_size = self._get_pad_size(sequence)
             sequence = self._pad_sequence(sequence, pad_size)
@@ -135,7 +138,6 @@ class BaseDataset(Dataset):
         Returns:
             dict: Dictionary of tensors of loaded sequence with different input modalities and actions.
         """
-
         episode = self._load_episode(idx, window_size)
 
         seq_state_obs = process_state(episode, self.observation_space, self.transforms, self.proprio_state)
@@ -148,7 +150,7 @@ class BaseDataset(Dataset):
         seq_dict = {**seq_state_obs, **seq_rgb_obs, **seq_acts, **info, **seq_lang}  # type:ignore
         seq_dict["idx"] = idx  # type:ignore
         return seq_dict
-
+        
     def _load_episode(self, idx: int, window_size: int) -> Dict[str, np.ndarray]:
         raise NotImplementedError
 

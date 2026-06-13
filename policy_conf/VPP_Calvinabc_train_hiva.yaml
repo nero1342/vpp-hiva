@@ -1,0 +1,129 @@
+defaults:
+  - datamodule: calvin
+
+root_data_dir: /localssd/hyc_data/calvin/task_ABC_D
+lang_folder: lang_clip_resnet50
+clip_lang_model_name: ViT-B/32
+
+log_dir: ./logs/svd_224token_3dresampler_extraview_svd2_hiva
+slurm: false
+min_window_size: 21 # 21
+max_window_size: 50
+future_range: 29
+seed: 242
+device: 'cuda'
+batch_size: 64
+devices: 4
+goal_window_size: 1
+multistep: 10 #${act_seq_len}
+p_last_state: 0
+max_epochs: 50
+log_every: 50
+rollout_lh_skip_epochs: 290
+window_sampling_strategy: 'geometric'
+num_workers: 12
+img_gen_frame_diff: 3
+benchmark_name: calvin_abcd # calvin_abcd
+use_ckpt_path : true
+ckpt_path: /home/colligo/Codes/HiVA/video-prediction-policy/cvpr2025/checkpoints/0009248_0.015.pt #/mnt/localssd/calvin/weights/dp-calvin/last.pt
+act_seq_len: 15   # F: dataset loads 15 future actions per sample for the spline fit (decoupled from the denoiser)
+obs_seq_len: 1
+
+# Weights & Biases logging (consumed by train() in step2_train_action_calvin.py).
+use_wandb: true
+run_name: vpp_hiva_calvin
+wandb_mode: online   # set to 'offline' or 'disabled' to avoid network/login
+
+model:
+  _target_: policy_models.VPP_policy_hiva.VPP_HiVA_Policy
+  _recursive_: false
+  latent_dim: 384
+  multistep: 10                  # H: execute first 10 decoded steps, then replan (receding horizon)
+  sampler_type: 'ddim'
+  num_sampling_steps: 10
+  sigma_data: 0.5
+  sigma_min: 0.001
+  sigma_max: 80
+  noise_scheduler: 'exponential'
+  sigma_sample_density_type: 'loglogistic'
+  use_lr_scheduler: true
+  act_window_size: 10            # = denoiser token count (coefficient tokens, padded)
+  obs_seq_len: ${obs_seq_len}
+  action_dim: 7
+  action_seq_len: 10             # denoiser token count; decoupled from dataset F (=act_seq_len=15) so pretrained weights load
+  use_text_not_embedding: True
+  seed: ${seed}
+  Former_depth: 6
+  Former_heads: 8
+  Former_dim_head: 64
+  Former_num_time_embeds: 16
+  num_latents: 224
+  pretrained_model_path: /cephfs/shared/gyj/ckpt/svd_calvin_2camera_2/checkpoint-100000
+  text_encoder_path: /cephfs/shared/llm/clip-vit-base-patch32
+  use_position_encoding: False # # should be same with finetune settings
+  use_Former: 3d
+  timestep: 20
+  use_all_layer: True
+  extract_layer_idx: 1
+  # --- HiVA coefficient representation ---
+  hiva_k: 8                      # number of B-spline control points (<= action_seq_len)
+  hiva_fit_horizon: 15           # F: spline fit / preview horizon (must equal dataset act_seq_len=15)
+  hiva_degree: 3                 # cubic B-spline
+  hiva_rot_mode: flat            # 'flat' (Euler-delta cumsum) or 'so3' (axis-angle composition)
+  hiva_rot_eta: 1.0              # only used by so3 mode
+  hiva_ridge: 0.0                # ridge for the lstsq fit (0 -> pseudo-inverse)
+  hiva_grip_min: -1.0            # CALVIN gripper command range
+  hiva_grip_max: 1.0
+  hiva_coeff_stats_mode: running # 'running' | 'buffer' | 'off' coefficient normalization
+  hiva_running_momentum: 0.01
+  optimizer:
+    _target_: torch.optim.AdamW
+    transformer_weight_decay: 0.05
+    obs_encoder_weight_decay: 0.05
+    learning_rate: 1e-4
+    betas: [ 0.9, 0.9 ]
+  lr_scheduler:
+    lr_scheduler:
+      init_lr: 1e-4  # This is the peak or maximum learning rate
+      init_lr_scale: 0.1  # This is the ratio of initial learning rate to peak learning rate
+      final_lr_scale: 1e-6  # This is the ratio of final learning rate to peak learning rate
+      total_steps: 50000  # Example total steps, adjust as needed
+      phase_ratio: "(0.02, 0.08, 0.9)"
+      lr: 1e-4
+
+trainer:
+  gpus: ${devices}
+  precision: 16
+  max_epochs: ${max_epochs}
+  sync_batchnorm: false
+  accelerator: auto
+  limit_train_batches: 3000
+  limit_val_batches: 4
+
+logger:
+  _target_: pytorch_lightning.loggers.WandbLogger
+  save_dir: .
+  name: logger
+  group: models
+  log_model: false
+  project: ${benchmark_name} # calvin_vision
+  #entity: bennoq
+  id: ???
+
+
+hydra:
+  run:
+    dir: ${log_dir}/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: ${log_dir}/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.override_dirname}
+  job:
+    config:
+      override_dirname:
+        exclude_keys:
+          - log_dir
+          - datamodule.root_data_dir
+          - trainer.gpus
+          - datamodule.num_workers
+          - trainer.limit_train_batches
+          - trainer.limit_val_batches
